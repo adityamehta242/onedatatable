@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>DataTable Test</title>
+    <script type="module">
+      console.log("Script running...");
+
+      import "./dist/datatable.mjs";
+
+      window.addEventListener("DOMContentLoaded", () => {
+        console.log("DOM loaded");
+        console.log(
+          "Custom element registered:",
+          !!customElements.get("data-table")
+        );
+
+        setTimeout(() => {
+          const element = document.querySelector("data-table");
+          console.log("Element found:", !!element);
+
+          if (element) {
+            console.log("Setting test data...");
+
+            // Define columns and subtables configuration
+            element.columns = [
+              { field: "id", header: "ID" },
+              { field: "name", header: "Name" },
+              { field: "email", header: "Email" },
+              { field: "age", header: "Age" },
+            ];
+
+            element.subtables = {
+              address: {
+                columns: [
+                  { field: "street", header: "Street" },
+                  { field: "city", header: "City" },
+                  { field: "state", header: "State" },
+                  { field: "zip", header: "Zip Code" },
+                ],
+                subtables: {
+                  phoneNumbers: {
+                    columns: [
+                      { field: "type", header: "Type" },
+                      { field: "number", header: "Number" },
+                    ],
+                  },
+                },
+              },
+            };
+
+            fetch("testdata.json")
+              .then((response) => response.json())
+              .then((rawData) => {
+                // Function to restructure the data dynamically
+                function restructureData(data, subtableDefinitions) {
+                  return data.map((item) => {
+                    let newItem = {};
+
+                    // Include only the fields explicitly defined in element.columns
+                    element.columns.forEach((col) => {
+                      if (item.hasOwnProperty(col.field)) {
+                        newItem[col.field] = item[col.field];
+                      }
+                    });
+
+                    // Handle subtables recursively
+                    function moveSubtables(
+                      parentObj,
+                      parentKey,
+                      childDefinitions
+                    ) {
+                      if (!item[parentKey]) return;
+
+                      Object.keys(childDefinitions).forEach((childKey) => {
+                        if (item[childKey]) {
+                          // Move child into parent
+                          parentObj[parentKey] = {
+                            ...parentObj[parentKey], // Preserve existing data
+                            [childKey]: item[childKey], // Attach child
+                          };
+                          delete item[childKey]; // Remove from root level
+                        }
+
+                        // Recursively process deeper subtables
+                        if (childDefinitions[childKey]?.subtables) {
+                          moveSubtables(
+                            parentObj[parentKey],
+                            childKey,
+                            childDefinitions[childKey].subtables
+                          );
+                        }
+                      });
+                    }
+
+                    // Move address and its subtables (phoneNumbers)
+                    if (subtableDefinitions.address) {
+                      newItem.address = { ...item.address };
+                      moveSubtables(
+                        newItem,
+                        "address",
+                        subtableDefinitions.address.subtables
+                      );
+                    }
+
+                    return newItem;
+                  });
+                }
+
+                // Restructure data dynamically
+                const structuredData = restructureData(
+                  rawData,
+                  element.subtables
+                );
+                console.log("Processed data:", structuredData);
+
+                element.data = structuredData;
+              })
+              .catch((error) => {
+                console.error("Error fetching or processing data:", error);
+              });
+          }
+        }, 100);
+      });
+    </script>
+  </head>
+  <body>
+    <h1>DataTable Test</h1>
+    <data-table></data-table>
+  </body>
+</html>
