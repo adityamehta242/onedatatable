@@ -55,8 +55,8 @@
                         subtables: {
                           preferences: {
                             columns: [
-                              { field: "newsletter", header: "Order ID" },
-                              { field: "language", header: "Product" },
+                              { field: "newsletter", header: "Newsletter" },
+                              { field: "language", header: "Language" },
                             ],
                           },
                         },
@@ -70,68 +70,61 @@
             fetch("testdata.json")
               .then((response) => response.json())
               .then((rawData) => {
-                // Function to restructure the data dynamically
-                function restructureData(data, subtableDefinitions) {
-                  return data.map((item) => {
-                    let newItem = {};
-
-                    // Include only the fields explicitly defined in element.columns
-                    element.columns.forEach((col) => {
-                      if (item.hasOwnProperty(col.field)) {
-                        newItem[col.field] = item[col.field];
-                      }
-                    });
-
-                    // Recursive function to move subtables dynamically
-                    function moveSubtables(parentObj, parentKey, subDefs) {
-                      if (!subDefs) return;
-
-                      Object.keys(subDefs).forEach((childKey) => {
-                        // If childKey exists at the root, move it inside the parent
-                        if (item[childKey]) {
-                          if (!parentObj[parentKey]) {
-                            parentObj[parentKey] = {};
-                          }
-
-                          parentObj[parentKey][childKey] = item[childKey];
-                          delete item[childKey]; // Remove from root level
-                        }
-
-                        // Recursively process deeper levels
-                        if (subDefs[childKey]?.subtables) {
-                          moveSubtables(
-                            parentObj[parentKey],
-                            childKey,
-                            subDefs[childKey].subtables
-                          );
-                        }
-                      });
+                console.log("Raw data:", rawData);
+                // Process the data to match the structure defined in element.subtables
+                const processedData = rawData.map(item => {
+                  // Create a copy of the item for the top level
+                  const newItem = { ...item };
+                  
+                  // Extract only the top level properties defined in columns
+                  const topLevelItem = {};
+                  element.columns.forEach(col => {
+                    if (item[col.field] !== undefined) {
+                      topLevelItem[col.field] = item[col.field];
                     }
-
-                    // Start processing from the top-level subtables
-                    Object.keys(subtableDefinitions).forEach((topLevelKey) => {
-                      if (item[topLevelKey]) {
-                        newItem[topLevelKey] = { ...item[topLevelKey] };
-                        moveSubtables(
-                          newItem,
-                          topLevelKey,
-                          subtableDefinitions[topLevelKey].subtables
-                        );
-                      }
-                    });
-
-                    return newItem;
                   });
-                }
-
-                // Restructure data dynamically
-                const structuredData = restructureData(
-                  rawData,
-                  element.subtables
-                );
-                console.log("Processed data:", structuredData);
-
-                element.data = [...structuredData];
+                  
+                  // Process address and its nested structures
+                  if (item.address) {
+                    const address = { ...item.address };
+                    
+                    // Process phoneNumbers
+                    if (item.phoneNumbers) {
+                      const phoneNumbers = Array.isArray(item.phoneNumbers) ? 
+                        item.phoneNumbers.map(phone => {
+                          const newPhone = { ...phone };
+                          
+                          // Process orders
+                          if (item.orders) {
+                            const orders = Array.isArray(item.orders) ?
+                              item.orders.map(order => {
+                                const newOrder = { ...order };
+                                
+                                // Process preferences
+                                if (item.preferences) {
+                                  newOrder.preferences = { ...item.preferences };
+                                }
+                                
+                                return newOrder;
+                              }) : { ...item.orders };
+                            
+                            newPhone.orders = orders;
+                          }
+                          
+                          return newPhone;
+                        }) : { ...item.phoneNumbers };
+                      
+                      address.phoneNumbers = phoneNumbers;
+                    }
+                    
+                    topLevelItem.address = address;
+                  }
+                  
+                  return topLevelItem;
+                });
+                
+                console.log("Processed data:", processedData);
+                element.data = processedData;
               })
               .catch((error) => {
                 console.error("Error fetching or processing data:", error);

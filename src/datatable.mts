@@ -339,7 +339,7 @@ export class Datatable extends LitElement {
             return html`
                 ${data.map((item, itemIndex) => {
                     const itemKey = `${parentKey}-${subtableField}-${itemIndex}`;
-                    const isItemExpanded = this.isSubtableRowExpanded(itemKey);
+                    const isItemExpanded = this.isSubtableRowExpanded(parentKey, itemKey);
                     
                     return html`
                         <tr>
@@ -347,7 +347,7 @@ export class Datatable extends LitElement {
                                 <td style="width: 40px;">
                                     <button 
                                         class="expand-button" 
-                                        @click=${() => this.toggleSubtableRow(itemKey)}
+                                        @click=${() => this.toggleSubtableRow(parentKey, itemKey)}
                                         aria-label="${isItemExpanded ? 'Collapse' : 'Expand'} row"
                                     >
                                         ${isItemExpanded ? '−' : '+'}
@@ -367,7 +367,7 @@ export class Datatable extends LitElement {
         } else {
             // For object data type
             const itemKey = `${parentKey}-${subtableField}`;
-            const isItemExpanded = this.isSubtableRowExpanded(itemKey);
+            const isItemExpanded = this.isSubtableRowExpanded(parentKey, itemKey);
             
             return html`
                 <tr>
@@ -375,7 +375,7 @@ export class Datatable extends LitElement {
                         <td style="width: 40px;">
                             <button 
                                 class="expand-button" 
-                                @click=${() => this.toggleSubtableRow(itemKey)}
+                                @click=${() => this.toggleSubtableRow(parentKey, itemKey)}
                                 aria-label="${isItemExpanded ? 'Collapse' : 'Expand'} row"
                             >
                                 ${isItemExpanded ? '−' : '+'}
@@ -393,32 +393,38 @@ export class Datatable extends LitElement {
         }
     }
 
-    private isSubtableRowExpanded(rowKey: string): boolean {
-        if (!this.expandedRows.has(rowKey)) {
+    private isSubtableRowExpanded(parentKey: string, rowKey: string): boolean {
+        if (!this.expandedRows.has(parentKey)) {
             return false;
         }
         
-        const expandedSet = this.expandedRows.get(rowKey);
+        const expandedSet = this.expandedRows.get(parentKey);
         return expandedSet?.has(rowKey) || false;
     }
-
-    private toggleSubtableRow(rowKey: string) {
-        if (!this.expandedRows.has(rowKey)) {
-            this.expandedRows.set(rowKey, new Set([rowKey]));
+    
+    private toggleSubtableRow(parentKey: string, rowKey: string) {
+        if (!this.expandedRows.has(parentKey)) {
+            this.expandedRows.set(parentKey, new Set([rowKey]));
         } else {
-            this.expandedRows.delete(rowKey);
+            const expandedSet = this.expandedRows.get(parentKey)!;
             
-            // Delete any child subtables
-            [...this.expandedRows.keys()].forEach(key => {
-                if (key.startsWith(`${rowKey}-`)) {
-                    this.expandedRows.delete(key);
-                }
-            });
+            if (expandedSet.has(rowKey)) {
+                expandedSet.delete(rowKey);
+                
+                // Delete any child subtables
+                [...this.expandedRows.keys()].forEach(key => {
+                    if (key.startsWith(`${rowKey}-`)) {
+                        this.expandedRows.delete(key);
+                    }
+                });
+            } else {
+                expandedSet.add(rowKey);
+            }
         }
         
         this.requestUpdate();
     }
-
+    
     private getFilteredData() {
         if (!this.filter || this.filter.trim() === '') return this.data;
         
@@ -432,7 +438,7 @@ export class Datatable extends LitElement {
             })
         );
     }
-
+    
     private getSortedData(data: Array<Record<string, any>>) {
         if (!this.sortColumn) return data;
         
@@ -459,17 +465,17 @@ export class Datatable extends LitElement {
             return 0;
         });
     }
-
+    
     private getPaginatedData(data: any[]) {
         const start = (this.currentPage - 1) * this.pageSize;
         const end = start + this.pageSize;
         return data.slice(start, end);
     }
-
+    
     private getTotalPages(data: any[]) {
         return Math.max(1, Math.ceil(data.length / this.pageSize));
     }
-
+    
     private handleSort(column: string) {
         if (this.sortColumn === column) {
             this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
@@ -478,16 +484,16 @@ export class Datatable extends LitElement {
             this.sortDirection = 'asc';
         }
     }
-
+    
     private handleFilter(e: Event) {
         this.filter = (e.target as HTMLInputElement).value;
         this.currentPage = 1;
     }
-
+    
     private prevPage() {
         if (this.currentPage > 1) this.currentPage--;
     }
-
+    
     private nextPage() {
         const totalPages = this.getTotalPages(this.getFilteredData());
         if (this.currentPage < totalPages) this.currentPage++;
