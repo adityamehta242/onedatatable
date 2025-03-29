@@ -1,13 +1,14 @@
 {
-    "compilerOptions": {
-      "target": "es2017",
-      "module": "nodenext",
-      "moduleResolution": "nodenext",
-      "strict": true,
-      "esModuleInterop": true,
-      "outDir": "dist",
-      "declaration": true,
-      "experimentalDecorators": true
-    },
-    "include": ["src/**/*"]
-  }
+  "compilerOptions": {
+    "target": "es2017",
+    "module": "es2020",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "outDir": "dist",
+    "declaration": true,
+    "experimentalDecorators": true,
+    "noEmit": false
+  },
+  "include": ["src/**/*"]
+}
