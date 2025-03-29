@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>DataTable Test</title>
+    <script type="module">
+      console.log("Script running...");
+
+      import "./dist/datatable.mjs";
+
+      window.addEventListener("DOMContentLoaded", () => {
+        console.log("DOM loaded");
+        console.log(
+          "Custom element registered:",
+          !!customElements.get("data-table")
+        );
+
+        setTimeout(() => {
+          const element = document.querySelector("data-table");
+          console.log("Element found:", !!element);
+
+          if (element) {
+            console.log("Setting test data...");
+
+            // Define columns and subtables configuration
+            element.columns = [
+              { field: "id", header: "ID" },
+              { field: "name", header: "Name" },
+              { field: "email", header: "Email" },
+              { field: "age", header: "Age" },
+            ];
+
+            element.subtables = {
+              address: {
+                columns: [
+                  { field: "street", header: "Street" },
+                  { field: "city", header: "City" },
+                  { field: "state", header: "State" },
+                  { field: "zip", header: "Zip Code" },
+                ],
+                subtables: {
+                  phoneNumbers: {
+                    columns: [
+                      { field: "type", header: "Type" },
+                      { field: "number", header: "Number" },
+                    ],
+                    subtables: {
+                      orders: {
+                        columns: [
+                          { field: "orderId", header: "Order ID" },
+                          { field: "product", header: "Product" },
+                          { field: "price", header: "Price" },
+                          { field: "quantity", header: "Quantity" },
+                          { field: "status", header: "Status" },
+                        ],
+                        subtables: {
+                          preferences: {
+                            columns: [
+                              { field: "newsletter", header: "Newsletter" },
+                              { field: "language", header: "Language" },
+                            ],
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            };
+
+            fetch("testdata.json")
+              .then((response) => response.json())
+              .then((rawData) => {
+                console.log("Raw data:", rawData);
+                // Process the data to match the structure defined in element.subtables
+                const processedData = rawData.map(item => {
+                  // Create a copy of the item for the top level
+                  const newItem = { ...item };
+                  
+                  // Extract only the top level properties defined in columns
+                  const topLevelItem = {};
+                  element.columns.forEach(col => {
+                    if (item[col.field] !== undefined) {
+                      topLevelItem[col.field] = item[col.field];
+                    }
+                  });
+                  
+                  // Process address and its nested structures
+                  if (item.address) {
+                    const address = { ...item.address };
+                    
+                    // Process phoneNumbers
+                    if (item.phoneNumbers) {
+                      const phoneNumbers = Array.isArray(item.phoneNumbers) ? 
+                        item.phoneNumbers.map(phone => {
+                          const newPhone = { ...phone };
+                          
+                          // Process orders
+                          if (item.orders) {
+                            const orders = Array.isArray(item.orders) ?
+                              item.orders.map(order => {
+                                const newOrder = { ...order };
+                                
+                                // Process preferences
+                                if (item.preferences) {
+                                  newOrder.preferences = { ...item.preferences };
+                                }
+                                
+                                return newOrder;
+                              }) : { ...item.orders };
+                            
+                            newPhone.orders = orders;
+                          }
+                          
+                          return newPhone;
+                        }) : { ...item.phoneNumbers };
+                      
+                      address.phoneNumbers = phoneNumbers;
+                    }
+                    
+                    topLevelItem.address = address;
+                  }
+                  
+                  return topLevelItem;
+                });
+                
+                console.log("Processed data:", processedData);
+                element.data = processedData;
+              })
+              .catch((error) => {
+                console.error("Error fetching or processing data:", error);
+              });
+          }
+        }, 100);
+      });
+    </script>
+  </head>
+  <body>
+    <h1>DataTable Test</h1>
+    <data-table></data-table>
+  </body>
+</html>
