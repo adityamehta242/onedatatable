@@ -1,7 +1,7 @@
-import { Datatable } from './datatable.js';
+// import { Datatable } from './datatable.js';
 
-// ESM Default Export
-export { Datatable };
+// // ESM Default Export
+// export { Datatable };
 
-// CJS Fallback
-export default Datatable;/
+// // CJS Fallback
+// export default Datatable;
