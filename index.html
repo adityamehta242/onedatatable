@@ -136,6 +136,7 @@
   </head>
   <body>
     <h1>DataTable Test</h1>
-    <data-table></data-table>
+    <data-table selectionMode="single"
+    @selectionChanged=${(e) => console.log('Selected:', e.detail)} ></data-table>
   </body>
 </html>
